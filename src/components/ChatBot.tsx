@@ -30,9 +30,12 @@ const ChatBot: React.FC = () => {
     chatResponse,
     isChatLoading,
     isTransactionPending,
+    pendingTransfer,
     connectWallet,
     disconnectWallet,
-    sendMessage
+    sendMessage,
+    confirmTransfer,
+    cancelTransfer
   } = useStacksContract();
 
   // Efecto para hacer scroll hacia abajo cuando hay nuevos mensajes
@@ -99,6 +102,35 @@ const ChatBot: React.FC = () => {
           <div className="message bot">
             <div className="message-content typing">
               <span>.</span><span>.</span><span>.</span>
+            </div>
+          </div>
+        )}
+        
+        {pendingTransfer && (
+          <div className="transfer-confirmation">
+            <div className="confirmation-card">
+              <h3>🔔 Confirmar Transferencia</h3>
+              <div className="transfer-details">
+                <p><strong>Destinatario:</strong></p>
+                <p className="address">{pendingTransfer.recipient}</p>
+                <p><strong>Cantidad:</strong> {pendingTransfer.amount} STX</p>
+              </div>
+              <div className="confirmation-buttons">
+                <button 
+                  onClick={confirmTransfer} 
+                  className="confirm-btn"
+                  disabled={isTransactionPending}
+                >
+                  ✅ Confirmar
+                </button>
+                <button 
+                  onClick={cancelTransfer} 
+                  className="cancel-btn"
+                  disabled={isTransactionPending}
+                >
+                  ❌ Cancelar
+                </button>
+              </div>
             </div>
           </div>
         )}

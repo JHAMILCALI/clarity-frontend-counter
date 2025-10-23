@@ -5,7 +5,9 @@
 import { useState, useCallback } from 'react';
 import { connect, showContractCall } from '@stacks/connect';
 import { 
-  PostConditionMode 
+  PostConditionMode,
+  principalCV,
+  uintCV
 } from '@stacks/transactions';
 import {
   NETWORK,
@@ -13,7 +15,7 @@ import {
   CONTRACT_NAME,
   CONTRACT_FUNCTIONS,
 } from '../config/contract';
-import { sendChatMessage, getCounterValue } from '../services/chatService';
+import { sendChatMessage, getCounterValue, prepareTransfer, getWalletBalance, checkTransaction } from '../services/chatService';
 
 // Tipos TypeScript
 interface UseStacksContractReturn {
@@ -36,12 +38,21 @@ interface UseStacksContractReturn {
   isTransactionPending: boolean;
   transactionId: string | null;
   
+  // Estado de confirmación de transferencia
+  pendingTransfer: {
+    recipient: string;
+    amount: number;
+    message: string;
+  } | null;
+  
   // Funciones
   connectWallet: () => void;
   disconnectWallet: () => void;
   incrementCounter: () => Promise<void>;
   getCount: () => Promise<void>;
   sendMessage: (message: string) => Promise<void>;
+  confirmTransfer: () => Promise<void>;
+  cancelTransfer: () => void;
 }
 
 /**
@@ -64,6 +75,13 @@ export const useStacksContract = (): UseStacksContractReturn => {
   // Estados de transacciones
   const [isTransactionPending, setIsTransactionPending] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
+  
+  // Estado de confirmación de transferencia
+  const [pendingTransfer, setPendingTransfer] = useState<{
+    recipient: string;
+    amount: number;
+    message: string;
+  } | null>(null);
   
   /**
    * Obtiene el balance del usuario
@@ -188,6 +206,32 @@ export const useStacksContract = (): UseStacksContractReturn => {
         case 'increment':
           await incrementCounter();
           break;
+        case 'transfer':
+          // Si la acción es transferir, mostrar confirmación
+          if (response.recipient && response.amount) {
+            setPendingTransfer({
+              recipient: response.recipient,
+              amount: response.amount,
+              message: `¿Deseas transferir ${response.amount} STX a ${response.recipient}?`
+            });
+            setChatResponse(`✋ Confirma la transferencia de ${response.amount} STX a ${response.recipient}`);
+          } else {
+            setChatResponse('⚠️ No pude identificar el destinatario o la cantidad. Por favor, especifica la dirección y el monto.');
+          }
+          break;
+        case 'balance':
+          // Consultar balance
+          if (response.address) {
+            try {
+              const balanceData = await getWalletBalance(response.address);
+              setChatResponse(balanceData.message);
+            } catch (error) {
+              setChatResponse('Error al consultar el balance');
+            }
+          } else {
+            setChatResponse('⚠️ Por favor, especifica una dirección válida para consultar el balance.');
+          }
+          break;
         default:
           setChatResponse(response.message);
       }
@@ -197,6 +241,93 @@ export const useStacksContract = (): UseStacksContractReturn => {
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  /**
+   * Confirma y ejecuta la transferencia pendiente
+   */
+  const confirmTransfer = async () => {
+    if (!pendingTransfer || !userAddress || !isConnected) {
+      setChatResponse('⚠️ Debes conectar tu wallet primero');
+      return;
+    }
+
+    setIsTransactionPending(true);
+    setChatResponse('⏳ Preparando transferencia...');
+
+    try {
+      // Preparar la transferencia con el backend
+      const transferData = await prepareTransfer(
+        userAddress,
+        pendingTransfer.recipient,
+        pendingTransfer.amount
+      );
+
+      // Convertir el monto a microSTX
+      const amountInMicroSTX = Math.floor(pendingTransfer.amount * 1000000);
+
+      // Ejecutar la transferencia usando el contrato
+      showContractCall({
+        contractAddress: transferData.contract_address,
+        contractName: transferData.contract_name,
+        functionName: transferData.function_name,
+        functionArgs: [
+          principalCV(pendingTransfer.recipient),
+          uintCV(amountInMicroSTX)
+        ],
+        network: NETWORK.chainId === 2147483648 ? 'testnet' : 'mainnet',
+        postConditionMode: PostConditionMode.Allow,
+        postConditions: [],
+        onFinish: async (data: any) => {
+          console.log('Transfer transaction submitted:', data.txId);
+          setTransactionId(data.txId);
+          setIsTransactionPending(false);
+          setPendingTransfer(null);
+          
+          // Verificar el estado de la transacción
+          try {
+            const txStatus = await checkTransaction(data.txId);
+            setChatResponse(
+              `✅ ${txStatus.message}\n\n` +
+              `📋 ID de transacción: ${data.txId}\n\n` +
+              `🔗 Ver en explorer: ${txStatus.explorer_url}`
+            );
+          } catch (error) {
+            setChatResponse(
+              `✅ Transferencia enviada exitosamente!\n\n` +
+              `📋 ID de transacción: ${data.txId}\n\n` +
+              `🔗 Ver en explorer: https://explorer.hiro.so/txid/${data.txId}?chain=testnet`
+            );
+          }
+          
+          // Actualizar el balance después de unos segundos
+          setTimeout(() => {
+            if (userAddress) {
+              fetchUserBalance(userAddress);
+            }
+          }, 5000);
+        },
+        onCancel: () => {
+          console.log('Transaction cancelled');
+          setIsTransactionPending(false);
+          setPendingTransfer(null);
+          setChatResponse('❌ Transferencia cancelada por el usuario');
+        },
+      });
+    } catch (error: any) {
+      console.error('Error transferring STX:', error);
+      setChatResponse(`❌ Error al realizar la transferencia: ${error.message || 'Error desconocido'}`);
+      setIsTransactionPending(false);
+      setPendingTransfer(null);
+    }
+  };
+
+  /**
+   * Cancela la transferencia pendiente
+   */
+  const cancelTransfer = () => {
+    setPendingTransfer(null);
+    setChatResponse('❌ Transferencia cancelada');
   };
 
   return {
@@ -215,6 +346,9 @@ export const useStacksContract = (): UseStacksContractReturn => {
     chatResponse,
     isChatLoading,
     
+    // Transferencias
+    pendingTransfer,
+    
     // Transacciones
     isTransactionPending,
     transactionId,
@@ -225,5 +359,7 @@ export const useStacksContract = (): UseStacksContractReturn => {
     incrementCounter,
     getCount,
     sendMessage,
+    confirmTransfer,
+    cancelTransfer,
   };
 };

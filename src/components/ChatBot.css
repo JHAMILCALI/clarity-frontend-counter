@@ -172,3 +172,108 @@
   background-color: #cccccc;
   cursor: not-allowed;
 }
+
+/* Diálogo de confirmación de transferencia */
+.transfer-confirmation {
+  display: flex;
+  justify-content: center;
+  padding: 15px 0;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confirmation-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 400px;
+  border: 2px solid #5546ff;
+}
+
+.confirmation-card h3 {
+  margin: 0 0 15px 0;
+  color: #5546ff;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.transfer-details {
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.transfer-details p {
+  margin: 8px 0;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.transfer-details .address {
+  font-family: monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  background-color: #e9ecf1;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.confirmation-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.confirm-btn,
+.cancel-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.confirm-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.cancel-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.confirm-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
