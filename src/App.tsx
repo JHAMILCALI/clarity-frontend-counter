@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Counter } from './components/Counter'
 import ChatBot from './components/ChatBot'
+import Transfer from './components/Transfer'
 import './App.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'counter' | 'chat'>('chat')
+  const [activeTab, setActiveTab] = useState<'counter' | 'chat' | 'transfer'>('transfer')
 
   return (
     <div className="app-container">
@@ -23,14 +24,22 @@ function App() {
           >
             Chat
           </button>
+          <button 
+            className={`tab-btn ${activeTab === 'transfer' ? 'active' : ''}`}
+            onClick={() => setActiveTab('transfer')}
+          >
+            Transferencias
+          </button>
         </div>
       </div>
 
       <div className="app-content">
         {activeTab === 'counter' ? (
           <Counter />
-        ) : (
+        ) : activeTab === 'chat' ? (
           <ChatBot />
+        ) : (
+          <Transfer />
         )}
       </div>
     </div>
