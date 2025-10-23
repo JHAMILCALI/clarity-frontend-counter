@@ -58,7 +58,7 @@ Una aplicación React moderna que interactúa con un contrato inteligente de Cla
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/OmarQV/clarity-frontend-counter.git
+git clone https://github.com/JHAMILCALI/clarity-frontend-counter.git
 cd clarity-frontend-counter
 
 # Instalar dependencias
